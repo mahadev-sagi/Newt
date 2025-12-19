@@ -1,0 +1,98 @@
+/*
+ * Implementation: 14 - Iterative using Vector Stack (Contiguous Memory)
+ * Filename: po_14_vector_stack.cpp
+ * Compatibility: C++98 (Clang 3.4 Safe)
+ */
+
+#include <iostream>
+#include <vector>
+#include <algorithm> // for reverse
+#include <cstdio>
+#include <fstream>
+#include <string>
+#include <cstdlib>
+
+using namespace std;
+
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+};
+
+class Solution {
+public:
+    std::vector<int> postorderTraversal(TreeNode* root) {
+        std::vector<int> result;
+        if (root == NULL) return result;
+
+        // Using vector as stack (contiguous memory)
+        std::vector<TreeNode*> vecStack;
+        vecStack.reserve(100); // Optional: avoid reallocations to keep addresses stable
+        vecStack.push_back(root);
+
+        while (!vecStack.empty()) {
+            // Access back (Top)
+            TreeNode* node = vecStack.back();
+            // Pop back
+            vecStack.pop_back();
+
+            // Store result (Root)
+            result.push_back(node->val);
+
+            // Push Left (so it is processed after Right)
+            if (node->left) {
+                vecStack.push_back(node->left);
+            }
+            // Push Right
+            if (node->right) {
+                vecStack.push_back(node->right);
+            }
+        }
+
+        // Reverse to get Postorder (Left -> Right -> Root)
+        std::reverse(result.begin(), result.end());
+        return result;
+    }
+};
+
+// --- HARNESS ---
+TreeNode* insert(TreeNode* root, int val) {
+    if (!root) return new TreeNode(val);
+    if (val < root->val)
+        root->left = insert(root->left, val);
+    else
+        root->right = insert(root->right, val);
+    return root;
+}
+
+// --- MAIN ---
+int main(int argc, char** argv) {
+    string filename = "numbers.txt";
+    if (argc > 1) {
+        filename = argv[1];
+    }
+
+    ifstream file(filename.c_str());
+    int num;
+    TreeNode* root = NULL;
+
+    if (!file.is_open()) {
+        vector<int> f; f.push_back(1); f.push_back(2); f.push_back(3); f.push_back(4); f.push_back(5);
+        for(size_t i=0; i<f.size(); ++i) root = insert(root, f[i]);
+    } else {
+        while(file >> num) root = insert(root, num);
+        file.close();
+    }
+
+    Solution sol;
+    std::vector<int> result = sol.postorderTraversal(root);
+
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << " ";
+    }
+    cout << endl;
+
+    return 0;
+}
