@@ -1,11 +1,10 @@
 /*
- * Implementation: 28 - Recursive with Exception Flow
+ * Implementation: 28 - Control Flow via Exception Handling
  * Filename: po_28_exception_flow.cpp
  * Compatibility: C++98 (Clang 3.4 Safe)
  * Logic:
- * Instead of standard returns, the recursive function 'throws' an integer
- * to signal completion to its parent.
- * The parent wraps calls in try-catch blocks to handle the control flow.
+ * Uses throw/catch to manage the 'Return' logic from recursion depths.
+ * (Highly inefficient, purely for fault injection diversity).
  */
 
 #include <iostream>
@@ -24,53 +23,43 @@ struct TreeNode {
     TreeNode(int x) : val(x), left(NULL), right(NULL) {}
 };
 
-// Define a specific type for control flow signal
-struct TraversalSignal {
-    int dummy;
-};
+// Custom exception for control flow
+struct ReturnSignal {};
 
 class Solution {
-public:
-    std::vector<int> postorderTraversal(TreeNode* root) {
-        std::vector<int> result;
+    std::vector<int> res;
+    
+    void unsafeTraverse(TreeNode* node) {
+        if (!node) throw ReturnSignal(); // Signal to go back
+        
         try {
-            traverse(root, result);
-        } catch (TraversalSignal) {
-            // Catch the final throw from the root node
+            unsafeTraverse(node->left);
+        } catch (ReturnSignal) {
+            // Caught return from left, proceed
         }
-        return result;
+
+        try {
+            unsafeTraverse(node->right);
+        } catch (ReturnSignal) {
+            // Caught return from right, proceed
+        }
+
+        res.push_back(node->val);
     }
 
-private:
-    void traverse(TreeNode* node, std::vector<int>& result) {
-        if (node == NULL) {
-            return; // Standard return for NULL base case
-        }
-
-        // 1. Try to traverse Left
+public:
+    std::vector<int> postorderTraversal(TreeNode* root) {
+        res.clear();
         try {
-            traverse(node->left, result);
-        } catch (TraversalSignal) {
-            // Caught signal that Left child is done
+            unsafeTraverse(root);
+        } catch (ReturnSignal) {
+            // Done
         }
-
-        // 2. Try to traverse Right
-        try {
-            traverse(node->right, result);
-        } catch (TraversalSignal) {
-            // Caught signal that Right child is done
-        }
-
-        // 3. Visit Node
-        result.push_back(node->val);
-
-        // 4. Signal completion to parent via Exception
-        TraversalSignal sig;
-        throw sig; 
+        return res;
     }
 };
 
-// --- HARNESS ---
+// --- TREE BUILDER ---
 TreeNode* insert(TreeNode* root, int val) {
     if (!root) return new TreeNode(val);
     if (val < root->val)
@@ -80,9 +69,9 @@ TreeNode* insert(TreeNode* root, int val) {
     return root;
 }
 
-// --- MAIN ---
+// --- MAIN (Updated) ---
 int main(int argc, char** argv) {
-    string filename = "numbers.txt";
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
@@ -91,17 +80,15 @@ int main(int argc, char** argv) {
     int num;
     TreeNode* root = NULL;
 
-    if (!file.is_open()) {
-        vector<int> f; f.push_back(1); f.push_back(2); f.push_back(3); f.push_back(4); f.push_back(5);
-        for(size_t i=0; i<f.size(); ++i) root = insert(root, f[i]);
-    } else {
-        while(file >> num) root = insert(root, num);
-        file.close();
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
     Solution sol;
     std::vector<int> result = sol.postorderTraversal(root);
 
+    // Print Actual Output
     for (size_t i = 0; i < result.size(); ++i) {
         cout << result[i] << " ";
     }

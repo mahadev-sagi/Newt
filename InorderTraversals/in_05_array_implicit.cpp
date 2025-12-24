@@ -1,9 +1,10 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream> 
+#include <string>  
 
-// Removed <vector> to prevent LLFI crashes
-// #include <vector> 
+
 
 using namespace std;
 
@@ -42,20 +43,24 @@ void inorder(Node* root) {
     inorder(root->right);
 }
 
-int main(int argc, char* argv[]) {
-    Node* root = NULL;
-
-    // --- CHANGED: Use simple array instead of vector ---
-    // This prevents "basic_string::_M_construct" errors in LLFI
-    int fb[] = {5, 3, 7, 1, 4, 6, 8};
-    int n = 7; // The fixed size of the array
-
-    // Standard for loop instead of range-based for loop
-    for(int i = 0; i < n; i++) {
-        root = insert(root, fb[i]);
+// --- MAIN (Updated) ---
+int main(int argc, char** argv) {
+    string filename = "../../numbers.txt";
+    if (argc > 1) {
+        filename = argv[1];
     }
 
-    // Run the traversal
+    ifstream file(filename.c_str());
+
+    int num;
+    Node* root = NULL;
+
+    while(file >> num) {
+        root = insert(root, num);
+    }
+    file.close();
+
+    // Run the traversal (Function prints internally)
     inorder(root);
     printf("\n");
 

@@ -1,9 +1,8 @@
 #include <iostream>
 #include <vector>
+#include <stack>
 #include <fstream>
-#include <cstdio>
-#include <cstdlib>
-#include <string> 
+#include <string>
 
 using namespace std;
 
@@ -14,18 +13,23 @@ struct Node {
 };
 
 // --- IMPLEMENTATION ---
-void helper(Node* root, vector<int>& res) {
-    if (!root) return;
-    helper(root->left, res);
-    res.push_back(root->val);
-    helper(root->right, res);
-}
-
 void in_order_traversal(Node* root, vector<int>& result) {
-    helper(root, result);
+    stack<Node*> s;
+    Node* curr = root;
+
+    while (curr != nullptr || !s.empty()) {
+        while (curr != nullptr) {
+            s.push(curr);
+            curr = curr->left;
+        }
+        curr = s.top();
+        s.pop();
+        result.push_back(curr->val);
+        curr = curr->right;
+    }
 }
 
-// --- VERIFICATION HARNESS ( ---
+// --- TREE BUILDER ---
 Node* insert(Node* root, int val) {
     if (!root) return new Node(val);
     if (val < root->val) {
@@ -38,40 +42,31 @@ Node* insert(Node* root, int val) {
     return root;
 }
 
-// --- MAIN (Modified for Automation) ---
-int main(int argc, char** argv) { // <--- 2. Update function signature
-    
-    // 3. Logic to pick the file from argument OR default
-    string filename = "numbers.txt";
+// --- MAIN (Updated for LLFI) ---
+int main(int argc, char** argv) {
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
 
-    // 4. Pass the variable 'filename.c_str()' instead of the hardcoded string
     ifstream file(filename.c_str());
-    
+ 
     int num;
     Node* root = nullptr;
     
-    if (!file.is_open()) {
-        // Fallback if file is missing
-        vector<int> fb = {5, 3, 7, 1, 4, 6, 8};
-        for(int x : fb) root = insert(root, x);
-    } else {
-        int limit = 0;
-        while(file >> num && limit++ < 2000) root = insert(root, num);
-        file.close();
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
     vector<int> result;
     if(root) in_order_traversal(root, result);
 
-    bool passed = true;
-    for (size_t i = 0; i < result.size() - 1; ++i) {
-        if (result[i] > result[i+1]) { passed = false; break; }
+    // Print Actual Output
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << " ";
     }
-    
-    if (passed && !result.empty()) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    cout << endl;
+
     return 0;
 }

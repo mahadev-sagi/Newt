@@ -1,13 +1,10 @@
 /*
- * Implementation: 29 - Iterative with Map State (External Lookup)
+ * Implementation: 29 - External Map for Node State
  * Filename: po_29_map_state.cpp
  * Compatibility: C++98 (Clang 3.4 Safe)
  * Logic:
- * Uses a std::map<TreeNode*, int> to track the progress of each node.
- * State 0: Push Left.
- * State 1: Push Right.
- * State 2: Visit.
- * Unlike stack-based state, this persists state in the heap.
+ * Uses std::map<TreeNode*, int> to track progress for every node.
+ * 0: Pre, 1: LeftDone, 2: RightDone.
  */
 
 #include <iostream>
@@ -32,49 +29,42 @@ class Solution {
 public:
     std::vector<int> postorderTraversal(TreeNode* root) {
         std::vector<int> result;
-        if (root == NULL) return result;
+        if (!root) return result;
 
-        std::stack<TreeNode*> st;
-        st.push(root);
+        std::stack<TreeNode*> s;
+        std::map<TreeNode*, int> state; // 0=Start, 1=LeftDone, 2=RightDone
 
-        // External State Map
-        // Key: Node Pointer, Value: State (0, 1, 2)
-        std::map<TreeNode*, int> stateMap;
+        s.push(root);
+        state[root] = 0;
 
-        while (!st.empty()) {
-            TreeNode* node = st.top();
-            
-            // Access map (O(log N) lookup)
-            int& state = stateMap[node]; // Default constructs to 0 if not found
+        while (!s.empty()) {
+            TreeNode* curr = s.top();
+            int st = state[curr];
 
-            if (state == 0) {
-                // State 0: Try to go Left
-                state = 1; // Update state in map
-                if (node->left) {
-                    st.push(node->left);
+            if (st == 0) {
+                state[curr] = 1;
+                if (curr->left) {
+                    s.push(curr->left);
+                    state[curr->left] = 0;
                 }
-            }
-            else if (state == 1) {
-                // State 1: Try to go Right
-                state = 2; // Update state in map
-                if (node->right) {
-                    st.push(node->right);
+            } else if (st == 1) {
+                state[curr] = 2;
+                if (curr->right) {
+                    s.push(curr->right);
+                    state[curr->right] = 0;
                 }
-            }
-            else {
-                // State 2: Visit
-                result.push_back(node->val);
-                st.pop();
-                
-                // Optional: Remove from map to save memory (clean up)
-                stateMap.erase(node);
+            } else {
+                result.push_back(curr->val);
+                s.pop();
+                // Clean up map to save memory (optional)
+                state.erase(curr);
             }
         }
         return result;
     }
 };
 
-// --- HARNESS ---
+// --- TREE BUILDER ---
 TreeNode* insert(TreeNode* root, int val) {
     if (!root) return new TreeNode(val);
     if (val < root->val)
@@ -84,9 +74,9 @@ TreeNode* insert(TreeNode* root, int val) {
     return root;
 }
 
-// --- MAIN ---
+// --- MAIN (Updated) ---
 int main(int argc, char** argv) {
-    string filename = "numbers.txt";
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
@@ -95,17 +85,15 @@ int main(int argc, char** argv) {
     int num;
     TreeNode* root = NULL;
 
-    if (!file.is_open()) {
-        vector<int> f; f.push_back(1); f.push_back(2); f.push_back(3); f.push_back(4); f.push_back(5);
-        for(size_t i=0; i<f.size(); ++i) root = insert(root, f[i]);
-    } else {
-        while(file >> num) root = insert(root, num);
-        file.close();
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
     Solution sol;
     std::vector<int> result = sol.postorderTraversal(root);
 
+    // Print Actual Output
     for (size_t i = 0; i < result.size(); ++i) {
         cout << result[i] << " ";
     }

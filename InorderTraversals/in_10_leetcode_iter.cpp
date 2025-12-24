@@ -33,7 +33,7 @@ void in_order_traversal(Node *root, vector<int>& v) {
     }
 }
 
-// --- VERIFICATION HARNESS ---
+// --- TREE BUILDER ---
 Node* insert(Node* root, int val) {
     if (!root) return new Node(val);
     if (val < root->val) root->left = insert(root->left, val);
@@ -41,45 +41,31 @@ Node* insert(Node* root, int val) {
     return root;
 }
 
-// --- MAIN ---
+// --- MAIN (Updated) ---
 int main(int argc, char** argv) {
-    // 1. Logic to pick the file from argument OR default
-    string filename = "numbers.txt";
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
 
-    // 2. Open file
     ifstream file(filename.c_str());
+
     int num;
     Node* root = nullptr;
     
-    // Robust input handling
-    if (!file.is_open()) {
-        vector<int> fallback = {10, 5, 15, 2, 7, 12, 20};
-        for(int x : fallback) root = insert(root, x);
-    } else {
-        while(file >> num) root = insert(root, num);
-        file.close();
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
     vector<int> result;
     in_order_traversal(root, result);
 
-    bool passed = true;
-    // 1. Check sorting
-    for (size_t i = 0; i < result.size() - 1; ++i) {
-        if (result[i] > result[i+1]) { 
-            cout << "FAILED at index " << i << endl; 
-            passed = false; 
-            break; 
-        }
+    // Print Actual Output
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << " ";
     }
-    // 2. Check data existence (basic check)
-    if (result.empty() && root != nullptr) passed = false;
-
-    if (passed) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    cout << endl;
     
     return 0;
 }

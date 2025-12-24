@@ -1,18 +1,10 @@
 /*
- * Implementation: 21 - Iterative Destructive (Sign Bit Marking)
+ * Implementation: 21 - Destructive (Sign Bit Marking)
  * Filename: po_21_destructive_sign.cpp
  * Compatibility: C++98 (Clang 3.4 Safe)
  * Logic:
- * 1. Stack stores Node pointers.
- * 2. If Node value is POSITIVE:
- * - Negate value (Mark as visited).
- * - Push Right Child.
- * - Push Left Child.
- * 3. If Node value is NEGATIVE:
- * - Restore value (Negate back).
- * - Visit/Print.
- * - Pop.
- * Assumption: Tree values must initially be positive.
+ * Uses the sign bit of the node's value to mark it as "visited".
+ * Requires modifying the tree structure (Data Corruption strategy).
  */
 
 #include <iostream>
@@ -22,6 +14,7 @@
 #include <fstream>
 #include <string>
 #include <cstdlib>
+#include <cmath> // for abs
 
 using namespace std;
 
@@ -38,40 +31,34 @@ public:
         std::vector<int> result;
         if (root == NULL) return result;
 
-        std::stack<TreeNode*> st;
-        st.push(root);
+        std::stack<TreeNode*> s;
+        s.push(root);
 
-        while (!st.empty()) {
-            TreeNode* node = st.top();
+        while (!s.empty()) {
+            TreeNode* curr = s.top();
 
-            if (node->val > 0) {
-                // First time seeing this node (Positive)
-                
-                // 1. Mark as visited (Destructive modification)
-                node->val = -node->val;
+            // Check if leaf or children already processed (marked negative)
+            // Note: We use 0 as a special case or assume inputs are positive for this algorithm
+            bool leftDone = (curr->left == NULL || curr->left->val < 0);
+            bool rightDone = (curr->right == NULL || curr->right->val < 0);
 
-                // 2. Push children (Right then Left)
-                if (node->right) st.push(node->right);
-                if (node->left) st.push(node->left);
-
+            if (leftDone && rightDone) {
+                // Visit
+                result.push_back(abs(curr->val));
+                // Mark as processed (destructive)
+                curr->val = -abs(curr->val);
+                s.pop();
             } else {
-                // Second time seeing this node (Negative/Marked)
-                
-                // 1. Restore value
-                node->val = -node->val;
-                
-                // 2. Visit
-                result.push_back(node->val);
-                
-                // 3. Pop
-                st.pop();
+                // Push children (Right first, so Left is processed first)
+                if (!rightDone) s.push(curr->right);
+                if (!leftDone) s.push(curr->left);
             }
         }
         return result;
     }
 };
 
-// --- HARNESS ---
+// --- TREE BUILDER ---
 TreeNode* insert(TreeNode* root, int val) {
     if (!root) return new TreeNode(val);
     if (val < root->val)
@@ -81,9 +68,9 @@ TreeNode* insert(TreeNode* root, int val) {
     return root;
 }
 
-// --- MAIN ---
+// --- MAIN (Updated) ---
 int main(int argc, char** argv) {
-    string filename = "numbers.txt";
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
@@ -92,17 +79,15 @@ int main(int argc, char** argv) {
     int num;
     TreeNode* root = NULL;
 
-    if (!file.is_open()) {
-        vector<int> f; f.push_back(1); f.push_back(2); f.push_back(3); f.push_back(4); f.push_back(5);
-        for(size_t i=0; i<f.size(); ++i) root = insert(root, f[i]);
-    } else {
-        while(file >> num) root = insert(root, num);
-        file.close();
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
     Solution sol;
     std::vector<int> result = sol.postorderTraversal(root);
 
+    // Print Actual Output
     for (size_t i = 0; i < result.size(); ++i) {
         cout << result[i] << " ";
     }

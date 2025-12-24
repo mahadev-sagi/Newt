@@ -2,7 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <cstdlib>
-#include <string> // <--- Added for string handling
+#include <string> 
 
 using namespace std;
 
@@ -74,7 +74,7 @@ void in_order_traversal(Node* head, vector<int>& result) {
     }
 }
 
-// --- HARNESS ---
+// --- MAIN (Updated) ---
 int main(int argc, char** argv) {
     // 1. Initialize Dummy Head for TBT (Critical for this algo)
     Node* head = new Node;
@@ -82,31 +82,28 @@ int main(int argc, char** argv) {
     head->left = head->right = head;
 
     // 2. Logic to pick the file from argument OR default
-    string filename = "numbers.txt";
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
 
     // 3. Open file
     ifstream file(filename.c_str());
+
     int num;
-    
-    if (!file.is_open()) {
-        vector<int> f = {5,3,7,2,4,6,8}; for(int i:f) insertTBT(head,i);
-    } else {
-        while(file >> num) insertTBT(head, num);
-        file.close();
+    while(file >> num) {
+        insertTBT(head, num);
     }
+    file.close();
 
     vector<int> result;
     in_order_traversal(head, result);
 
-    bool passed = true;
-    for (size_t i = 0; i < result.size() - 1; ++i) {
-        if (result[i] > result[i+1]) { passed = false; break; }
+    // Print Actual Output
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << " ";
     }
-    
-    if (passed && !result.empty()) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    cout << endl;
+
     return 0;
 }

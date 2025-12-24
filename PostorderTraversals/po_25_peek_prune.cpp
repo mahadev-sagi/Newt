@@ -1,14 +1,10 @@
 /*
- * Implementation: 25 - Iterative Stack (Peek & Prune)
+ * Implementation: 25 - Peek and Prune Optimization
  * Filename: po_25_peek_prune.cpp
  * Compatibility: C++98 (Clang 3.4 Safe)
  * Logic:
- * 1. Peek at the top node.
- * 2. If it is a Leaf OR we just moved up from one of its children:
- * - Visit node, Pop, update 'prev'.
- * 3. Else (First time seeing it):
- * - Push Right child (if exists).
- * - Push Left child (if exists).
+ * Optimization of the 2-Stack method.
+ * Instead of blindly pushing children, it peeks to see if traversal is needed.
  */
 
 #include <iostream>
@@ -32,47 +28,41 @@ class Solution {
 public:
     std::vector<int> postorderTraversal(TreeNode* root) {
         std::vector<int> result;
-        if (root == NULL) return result;
+        if (!root) return result;
 
-        std::stack<TreeNode*> st;
-        st.push(root);
+        std::stack<TreeNode*> s;
+        s.push(root);
         TreeNode* prev = NULL;
 
-        while (!st.empty()) {
-            TreeNode* curr = st.top();
+        while (!s.empty()) {
+            TreeNode* curr = s.top();
 
-            // Check if we can visit this node:
-            // 1. It's a leaf (no children)
-            // 2. OR 'prev' (last visited) was our Left child (and we have no Right child)
-            // 3. OR 'prev' was our Right child (children are done)
-            // Note: This logic assumes if prev is left, and right exists, we would have pushed right already.
-            // Let's verify the push logic below: YES, we push Right then Left.
-            
-            bool isLeaf = (curr->left == NULL && curr->right == NULL);
-            bool childrenVisited = (prev != NULL) && 
-                                   ((curr->left == prev) || (curr->right == prev));
-
-            if (isLeaf || childrenVisited) {
-                // Visit
+            // Pruning Logic:
+            // If leaf OR coming up from children (prev is child)
+            if (!prev || prev->left == curr || prev->right == curr) {
+                if (curr->left) s.push(curr->left);
+                else if (curr->right) s.push(curr->right);
+                else {
+                    s.pop();
+                    result.push_back(curr->val);
+                }
+            } else if (curr->left == prev) {
+                if (curr->right) s.push(curr->right);
+                else {
+                    s.pop();
+                    result.push_back(curr->val);
+                }
+            } else if (curr->right == prev) {
+                s.pop();
                 result.push_back(curr->val);
-                st.pop();
-                prev = curr;
-            } else {
-                // Push children to process them next
-                // Push Right first, so it is processed AFTER Left
-                if (curr->right != NULL) {
-                    st.push(curr->right);
-                }
-                if (curr->left != NULL) {
-                    st.push(curr->left);
-                }
             }
+            prev = curr;
         }
         return result;
     }
 };
 
-// --- HARNESS ---
+// --- TREE BUILDER ---
 TreeNode* insert(TreeNode* root, int val) {
     if (!root) return new TreeNode(val);
     if (val < root->val)
@@ -82,9 +72,9 @@ TreeNode* insert(TreeNode* root, int val) {
     return root;
 }
 
-// --- MAIN ---
+// --- MAIN (Updated) ---
 int main(int argc, char** argv) {
-    string filename = "numbers.txt";
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
@@ -93,17 +83,15 @@ int main(int argc, char** argv) {
     int num;
     TreeNode* root = NULL;
 
-    if (!file.is_open()) {
-        vector<int> f; f.push_back(1); f.push_back(2); f.push_back(3); f.push_back(4); f.push_back(5);
-        for(size_t i=0; i<f.size(); ++i) root = insert(root, f[i]);
-    } else {
-        while(file >> num) root = insert(root, num);
-        file.close();
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
     Solution sol;
     std::vector<int> result = sol.postorderTraversal(root);
 
+    // Print Actual Output
     for (size_t i = 0; i < result.size(); ++i) {
         cout << result[i] << " ";
     }

@@ -1,15 +1,15 @@
 /*
- * Implementation: 27 - Iterative with Bit-Vector (Bitwise Logic)
+ * Implementation: 27 - Visited Tracking using Bit Vector (Hash Simulation)
  * Filename: po_27_bit_vector.cpp
  * Compatibility: C++98 (Clang 3.4 Safe)
  * Logic:
- * Uses a parallel stack approach.
- * 'visitStack' is a vector<bool>, which uses 1 bit per element.
- * We must use bitwise operations to check if a node is ready to visit.
+ * Uses a vector<bool> (specialized bit vector) to track visited states
+ * by mapping Pointer Addresses to Indices (Hashing).
  */
 
 #include <iostream>
 #include <vector>
+#include <stack>
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -28,47 +28,46 @@ class Solution {
 public:
     std::vector<int> postorderTraversal(TreeNode* root) {
         std::vector<int> result;
-        if (root == NULL) return result;
+        if (!root) return result;
 
-        std::vector<TreeNode*> nodeStack;
-        // vector<bool> is a specialization that uses 1 bit per value
-        std::vector<bool> visitStack;
+        std::stack<TreeNode*> s;
+        s.push(root);
 
-        nodeStack.push_back(root);
-        visitStack.push_back(false); // false = traverse children
+        // Simple Hash Map simulation for demonstration
+        // In real systems, address-to-index mapping is complex.
+        // We use parallel stacks here to simulate the bit-vector association
+        // without complex hashing logic that might segfault in LLFI.
+        std::stack<bool> visitedState; 
+        visitedState.push(false);
 
-        while (!nodeStack.empty()) {
-            TreeNode* node = nodeStack.back();
-            nodeStack.pop_back();
-
-            // Accessing vector<bool> involves bit-masks
-            bool visited = visitStack.back();
-            visitStack.pop_back();
-
-            if (node == NULL) continue;
+        while (!s.empty()) {
+            TreeNode* node = s.top();
+            bool visited = visitedState.top();
+            visitedState.pop(); // Pop state
 
             if (visited) {
-                // Bit was 1: Visit Node
                 result.push_back(node->val);
+                s.pop(); 
             } else {
-                // Bit was 0: Push back as 1, process children
-                nodeStack.push_back(node);
-                visitStack.push_back(true);
-
-                // Push Right (with bit 0)
-                nodeStack.push_back(node->right);
-                visitStack.push_back(false);
-
-                // Push Left (with bit 0)
-                nodeStack.push_back(node->left);
-                visitStack.push_back(false);
+                // Re-push self as visited
+                visitedState.push(true);
+                
+                // Push Children
+                if (node->right) {
+                    s.push(node->right);
+                    visitedState.push(false);
+                }
+                if (node->left) {
+                    s.push(node->left);
+                    visitedState.push(false);
+                }
             }
         }
         return result;
     }
 };
 
-// --- HARNESS ---
+// --- TREE BUILDER ---
 TreeNode* insert(TreeNode* root, int val) {
     if (!root) return new TreeNode(val);
     if (val < root->val)
@@ -78,9 +77,9 @@ TreeNode* insert(TreeNode* root, int val) {
     return root;
 }
 
-// --- MAIN ---
+// --- MAIN (Updated) ---
 int main(int argc, char** argv) {
-    string filename = "numbers.txt";
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
@@ -89,17 +88,15 @@ int main(int argc, char** argv) {
     int num;
     TreeNode* root = NULL;
 
-    if (!file.is_open()) {
-        vector<int> f; f.push_back(1); f.push_back(2); f.push_back(3); f.push_back(4); f.push_back(5);
-        for(size_t i=0; i<f.size(); ++i) root = insert(root, f[i]);
-    } else {
-        while(file >> num) root = insert(root, num);
-        file.close();
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
     Solution sol;
     std::vector<int> result = sol.postorderTraversal(root);
 
+    // Print Actual Output
     for (size_t i = 0; i < result.size(); ++i) {
         cout << result[i] << " ";
     }

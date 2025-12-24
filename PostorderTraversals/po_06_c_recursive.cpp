@@ -55,70 +55,22 @@ void postOrder(Node* root) {
     }
 }
 
-// --- VERIFICATION HARNESS ---
-
-// Standard TreeNode for Golden Reference calculation
-struct TreeNode {
-    int val;
-    TreeNode *left, *right;
-    TreeNode(int x) : val(x), left(NULL), right(NULL) {}
-};
-
-TreeNode* insertGolden(TreeNode* root, int val) {
-    if (!root) return new TreeNode(val);
-    if (val < root->val) root->left = insertGolden(root->left, val);
-    else root->right = insertGolden(root->right, val);
-    return root;
-}
-
-void goldenPostorder(TreeNode* root, std::vector<int>& res) {
-    if (!root) return;
-    goldenPostorder(root->left, res);
-    goldenPostorder(root->right, res);
-    res.push_back(root->val);
-}
-
-// --- MAIN ---
+// --- MAIN (Updated for LLFI) ---
 int main(int argc, char** argv) {
-    std::string filename = "numbers.txt";
+    std::string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
 
     std::ifstream file(filename.c_str());
-    if (!file.is_open()) {
-        // Fallback default
-        int defaults[] = {5, 3, 7, 2, 4, 6, 8};
-        int num_defaults = sizeof(defaults) / sizeof(defaults[0]);
-        
-        Node* c_root = NULL;
-        TreeNode* golden_root = NULL;
-        
-        for (int i = 0; i < num_defaults; ++i) {
-            c_root = insertC(c_root, defaults[i]);
-            golden_root = insertGolden(golden_root, defaults[i]);
-        }
-        
-        global_result.clear();
-        postOrder(c_root);
-        
-        std::vector<int> expected;
-        goldenPostorder(golden_root, expected);
-        
-        if (global_result == expected) std::cout << "VERIFICATION PASSED" << std::endl;
-        else std::cout << "FAILED" << std::endl;
-        
-        return 0;
-    }
+
 
     int num;
     Node* c_root = NULL;         // System Under Test
-    TreeNode* golden_root = NULL; // Expected Result
 
-    // Load Data into both trees
+    // Load Data into tree
     while (file >> num) {
         c_root = insertC(c_root, num);
-        golden_root = insertGolden(golden_root, num);
     }
     file.close();
 
@@ -126,17 +78,11 @@ int main(int argc, char** argv) {
     global_result.clear();
     postOrder(c_root);
 
-    // 2. Run Golden Reference
-    std::vector<int> expected;
-    goldenPostorder(golden_root, expected);
-
-    // 3. Verify
-    if (global_result == expected) {
-        std::cout << "VERIFICATION PASSED" << std::endl;
-    } else {
-        std::cout << "FAILED" << std::endl;
-        std::cout << "Expected size: " << expected.size() << " Got: " << global_result.size() << std::endl;
+    // 2. Print Actual Output
+    for (size_t i = 0; i < global_result.size(); ++i) {
+        std::cout << global_result[i] << " ";
     }
+    std::cout << std::endl;
 
     return 0;
 }

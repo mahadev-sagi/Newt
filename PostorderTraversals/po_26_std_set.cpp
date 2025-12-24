@@ -1,18 +1,16 @@
 /*
- * Implementation: 26 - Iterative with std::set (External State)
+ * Implementation: 26 - Visited Tracking using std::set
  * Filename: po_26_std_set.cpp
  * Compatibility: C++98 (Clang 3.4 Safe)
  * Logic:
- * 1. Peek at current node on stack.
- * 2. Check if children are "ready" (NULL or already present in std::set).
- * 3. If ready: Visit node, insert into set, pop.
- * 4. Else: Push children (Right then Left) to stack.
+ * Uses an external std::set to track which nodes have been 'expanded'.
+ * High memory overhead (O(N) Set nodes) but conceptually simple.
  */
 
 #include <iostream>
 #include <vector>
 #include <stack>
-#include <set>
+#include <set> // O(log N) lookups
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -31,44 +29,33 @@ class Solution {
 public:
     std::vector<int> postorderTraversal(TreeNode* root) {
         std::vector<int> result;
-        if (root == NULL) return result;
+        if (!root) return result;
 
-        std::stack<TreeNode*> st;
-        st.push(root);
+        std::stack<TreeNode*> s;
+        std::set<TreeNode*> visited; // Tracks if children expanded
 
-        // Track completed nodes (pointers)
-        std::set<TreeNode*> visited;
+        s.push(root);
 
-        while (!st.empty()) {
-            TreeNode* curr = st.top();
+        while (!s.empty()) {
+            TreeNode* node = s.top();
 
-            // Condition to visit 'curr':
-            // 1. Left is NULL or already visited
-            bool leftReady = (curr->left == NULL || visited.count(curr->left));
-            // 2. Right is NULL or already visited
-            bool rightReady = (curr->right == NULL || visited.count(curr->right));
-
-            if (leftReady && rightReady) {
-                // Children are done, so we can visit 'curr'
-                result.push_back(curr->val);
-                visited.insert(curr); // Mark as done
-                st.pop();
+            // Check if we already expanded this node
+            if (visited.count(node)) {
+                result.push_back(node->val);
+                s.pop();
+                // cleanup optimization: visited.erase(node);
             } else {
-                // Push children to stack
-                // Push Right first so it's processed after Left
-                if (curr->right != NULL && !visited.count(curr->right)) {
-                    st.push(curr->right);
-                }
-                if (curr->left != NULL && !visited.count(curr->left)) {
-                    st.push(curr->left);
-                }
+                visited.insert(node);
+                // Push children (Right first, then Left)
+                if (node->right) s.push(node->right);
+                if (node->left) s.push(node->left);
             }
         }
         return result;
     }
 };
 
-// --- HARNESS ---
+// --- TREE BUILDER ---
 TreeNode* insert(TreeNode* root, int val) {
     if (!root) return new TreeNode(val);
     if (val < root->val)
@@ -78,9 +65,9 @@ TreeNode* insert(TreeNode* root, int val) {
     return root;
 }
 
-// --- MAIN ---
+// --- MAIN (Updated) ---
 int main(int argc, char** argv) {
-    string filename = "numbers.txt";
+    string filename = "../../numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
@@ -89,17 +76,15 @@ int main(int argc, char** argv) {
     int num;
     TreeNode* root = NULL;
 
-    if (!file.is_open()) {
-        vector<int> f; f.push_back(1); f.push_back(2); f.push_back(3); f.push_back(4); f.push_back(5);
-        for(size_t i=0; i<f.size(); ++i) root = insert(root, f[i]);
-    } else {
-        while(file >> num) root = insert(root, num);
-        file.close();
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
     Solution sol;
     std::vector<int> result = sol.postorderTraversal(root);
 
+    // Print Actual Output
     for (size_t i = 0; i < result.size(); ++i) {
         cout << result[i] << " ";
     }
