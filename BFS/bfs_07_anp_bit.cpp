@@ -2,83 +2,118 @@
 #include <vector>
 #include <fstream>
 #include <algorithm>
+#include <map>
+#include <string>
 
 using namespace std;
 
-// OD: Two-Phase processing. 
-void bfs_anp(int n, const vector<vector<int>>& adj, int start, vector<int>& dist) {
-    dist.assign(n, -1);
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
+
+// --- IMPLEMENTATION ---
+// OD: Preserves the unique Two-Phase processing structure from the original bfs_07.
+void bfs_anp(Node* root, const vector<Node*>& all_nodes, map<Node*, int>& node_to_idx, vector<int>& result) {
+    if (!root) return;
+    int n = all_nodes.size();
     
+    // OD: Using bitmask vectors as per the original implementation structure
     vector<uint64_t> visited(n, 0);
     vector<uint64_t> frontier(n, 0);
     vector<uint64_t> next_frontier(n, 0); 
 
     uint64_t mask = 1;
-    visited[start] |= mask;
-    frontier[start] |= mask;
-    dist[start] = 0;
+    int root_idx = node_to_idx[root];
+    visited[root_idx] |= mask;
+    frontier[root_idx] |= mask;
 
-    int level = 0;
     bool active = true;
 
     while (active) {
         active = false;
-        level++;
 
         // PHASE 1: Blind Aggregation (Write to next_frontier)
-        for (int u = 0; u < n; ++u) {
-            if (frontier[u] & mask) {
-                for (int v : adj[u]) {
-                    // OD: No check here! Just write.
-                    next_frontier[v] |= mask;
-                }
+        // OD: No checks here, just marking potential next nodes.
+        for (int u_idx = 0; u_idx < n; ++u_idx) {
+            if (frontier[u_idx] & mask) {
+                Node* u = all_nodes[u_idx];
+                if (u->left) next_frontier[node_to_idx[u->left]] |= mask;
+                if (u->right) next_frontier[node_to_idx[u->right]] |= mask;
             }
         }
 
         // PHASE 2: Process & Filter
-        for (int u = 0; u < n; ++u) {
-            if ((next_frontier[u] & mask) && !(visited[u] & mask)) {
-                visited[u] |= mask;
-                dist[u] = level;
+        // OD: Only now do we check visited status and record the output.
+        for (int u_idx = 0; u_idx < n; ++u_idx) {
+            if ((next_frontier[u_idx] & mask) && !(visited[u_idx] & mask)) {
+                visited[u_idx] |= mask;
+                result.push_back(all_nodes[u_idx]->val);
                 active = true;
             } else {
-                next_frontier[u] = 0; 
+                next_frontier[u_idx] = 0; 
             }
         }
         
+        // Swap buffers
         frontier = next_frontier;
         fill(next_frontier.begin(), next_frontier.end(), 0);
     }
 }
 
-// --- VERIFICATION HARNESS ---
-#include <queue>
-int main() {
-    int n = 100;
-    vector<vector<int>> adj(n);
-    ifstream file("graph.txt");
-    int u, v;
-    if (!file.is_open()) {
-        adj[0].push_back(1); adj[1].push_back(0);
+// --- TREE BUILDER ---
+Node* insert(Node* root, int val, vector<Node*>& all_nodes, map<Node*, int>& node_to_idx) {
+    if (!root) {
+        Node* newNode = new Node(val);
+        node_to_idx[newNode] = all_nodes.size();
+        all_nodes.push_back(newNode);
+        return newNode;
+    }
+    if (val < root->val) {
+        root->left = insert(root->left, val, all_nodes, node_to_idx);
+        root->left->parent = root;
     } else {
-        while(file >> u >> v) { if(u<n && v<n) { adj[u].push_back(v); adj[v].push_back(u); }}
+        root->right = insert(root->right, val, all_nodes, node_to_idx);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree and Metadata from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
     }
 
-    vector<int> dist_impl;
-    bfs_anp(n, adj, 0, dist_impl);
+    int num;
+    Node* root = nullptr;
+    vector<Node*> all_nodes;
+    map<Node*, int> node_to_idx;
 
-    // Reference
-    vector<int> dist_ref(n, -1);
-    queue<int> q; q.push(0); dist_ref[0]=0;
-    vector<bool> vis(n,false); vis[0]=true;
-    while(!q.empty()){
-        int curr = q.front(); q.pop();
-        for(int nb : adj[curr]){
-            if(!vis[nb]){ vis[nb]=true; dist_ref[nb]=dist_ref[curr]+1; q.push(nb); }
-        }
+    // Build BST from the 10k numbers
+    while(file >> num) {
+        root = insert(root, num, all_nodes, node_to_idx);
     }
+    file.close();
 
-    if (dist_impl == dist_ref) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    // 2. Run Implementation
+    vector<int> result;
+    // Add the root manually to the result as Phase 2 only catches children
+    if (root) result.push_back(root->val); 
+    bfs_anp(root, all_nodes, node_to_idx, result);
+
+    // 3. Print Actual Output for Gold Standard Comparison
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

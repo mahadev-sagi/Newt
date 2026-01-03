@@ -1,27 +1,18 @@
-#include <iostream>
 #include <cstdio>
 #include <cstdlib>
-#include <fstream> 
-#include <string>  
-
-
 
 using namespace std;
 
+// --- CORE LOGIC (UNCHANGED) ---
 struct Node {
     int val;
     Node* left;
     Node* right;
-    
-    // Explicitly initialize pointers to NULL for older C++ compatibility
     Node(int v) : val(v), left(NULL), right(NULL) {}
 };
 
-// Standard BST Insert Function
 Node* insert(Node* root, int key) {
-    if (root == NULL) {
-        return new Node(key);
-    }
+    if (root == NULL) return new Node(key);
     if (key < root->val) {
         root->left = insert(root->left, key);
     } else {
@@ -30,39 +21,46 @@ Node* insert(Node* root, int key) {
     return root;
 }
 
-// Inorder Traversal: Implicit Stack (Recursion)
 void inorder(Node* root) {
     if (root == NULL) return;
-    
     inorder(root->left);
-    
-    // Print to stderr or stdout
-    // Using printf is often safer for FI than cout
-    printf("%d ", root->val);
-    
+    printf("%d ", root->val); // Using printf which matches your original code
     inorder(root->right);
 }
 
-// --- MAIN (Updated) ---
+// --- MAIN (Updated Infrastructure ONLY) ---
 int main(int argc, char** argv) {
-    string filename = "../../numbers.txt";
+    // 1. Use simple char* instead of std::string to fix Linker Error
+    const char* filename = "numbers.txt";
     if (argc > 1) {
         filename = argv[1];
     }
 
-    ifstream file(filename.c_str());
+    // 2. Use FILE* instead of ifstream to avoid C++ library issues
+    FILE* file = fopen(filename, "r");
+
+    // 3. Fix the "0 Cycles" Crash: Look in parent directory if not found
+    if (!file) {
+        char parent_path[256];
+        sprintf(parent_path, "../%s", filename);
+        file = fopen(parent_path, "r");
+    }
+
+    // Safety check
+    if (!file) return 1;
 
     int num;
     Node* root = NULL;
 
-    while(file >> num) {
+    // Standard reading loop
+    while(fscanf(file, "%d", &num) == 1) {
         root = insert(root, num);
     }
-    file.close();
+    fclose(file);
 
-    // Run the traversal (Function prints internally)
     inorder(root);
     printf("\n");
 
-    return 0;
+    // 4. Force Exit to fix LLFI assertion failure
+    exit(0);
 }

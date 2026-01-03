@@ -2,79 +2,86 @@
 #include <vector>
 #include <queue>
 #include <fstream>
-#include <map>
+#include <string>
 
 using namespace std;
 
-// OD: Struct with real pointers
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+// Matches Node structure in in_01_recursive.cpp
 struct Node {
-    int id;
-    vector<Node*> neighbors;
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
 };
 
-void bfs_pointer(Node* start, int n, vector<int>& dist) {
-    dist.assign(n, -1);
-    vector<bool> visited(n, false);
-    
+// --- IMPLEMENTATION ---
+// OD: Preserves the structure of using real pointers for traversal as per original bfs_15.
+void bfs_pointer(Node* start, vector<int>& result) {
+    if (!start) return;
+
+    // OD: Using a queue of Node* to traverse pointers
     queue<Node*> q;
     q.push(start);
     
-    visited[start->id] = true;
-    dist[start->id] = 0;
-
     while (!q.empty()) {
         Node* u = q.front();
         q.pop();
 
-        for (Node* v : u->neighbors) {
-            // OD: Dereferencing pointer v
-            if (!visited[v->id]) {
-                visited[v->id] = true;
-                dist[v->id] = dist[u->id] + 1;
-                q.push(v);
-            }
+        // Record value for Gold Standard output
+        result.push_back(u->val);
+
+        // OD: Traversing node pointers (neighbors in the tree)
+        if (u->left) {
+            q.push(u->left);
+        }
+        if (u->right) {
+            q.push(u->right);
         }
     }
 }
 
-// --- VERIFICATION HARNESS ---
-int main() {
-    int n = 100;
-    vector<Node> nodes(n);
-    for(int i=0; i<n; i++) nodes[i].id = i;
-
-    vector<vector<int>> adj_ref(n);
-    ifstream file("graph.txt");
-    int u, v;
-    if (!file.is_open()) {
-        nodes[0].neighbors.push_back(&nodes[1]); nodes[1].neighbors.push_back(&nodes[0]);
-        adj_ref[0].push_back(1); adj_ref[1].push_back(0);
+// --- TREE BUILDER ---
+// Standard BST insertion logic as seen in in_01_recursive.cpp
+Node* insert(Node* root, int val) {
+    if (!root) return new Node(val);
+    if (val < root->val) {
+        root->left = insert(root->left, val);
+        root->left->parent = root;
     } else {
-        while(file >> u >> v) { 
-            if(u<n && v<n) { 
-                nodes[u].neighbors.push_back(&nodes[v]);
-                nodes[v].neighbors.push_back(&nodes[u]);
-                adj_ref[u].push_back(v);
-                adj_ref[v].push_back(u);
-            }
-        }
+        root->right = insert(root->right, val);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
     }
 
-    vector<int> dist_impl;
-    bfs_pointer(&nodes[0], n, dist_impl);
-
-    // Reference
-    vector<int> dist_ref(n, -1);
-    queue<int> q; q.push(0); dist_ref[0]=0;
-    vector<bool> vis(n,false); vis[0]=true;
-    while(!q.empty()){
-        int curr = q.front(); q.pop();
-        for(int nb : adj_ref[curr]){
-            if(!vis[nb]){ vis[nb]=true; dist_ref[nb]=dist_ref[curr]+1; q.push(nb); }
-        }
+    int num;
+    Node* root = nullptr;
+    // Build BST from the 10k numbers
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
-    if (dist_impl == dist_ref) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_pointer(root, result);
+
+    // 3. Print Actual Output (Matches Inorder/Postorder style)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

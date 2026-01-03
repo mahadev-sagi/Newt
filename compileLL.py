@@ -2,8 +2,8 @@ import os
 import subprocess
 
 # Configuration
-SOURCE_DIR = "InorderTraversals"
-OUTPUT_DIR = "ll_files"
+SOURCE_DIR = "BFS"
+OUTPUT_DIR = "llb_files"
 
 # 1. Create the output directory if it doesn't exist
 if not os.path.exists(OUTPUT_DIR):

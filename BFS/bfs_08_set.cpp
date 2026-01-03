@@ -2,65 +2,93 @@
 #include <vector>
 #include <set>
 #include <fstream>
-#include <algorithm>
+#include <string>
 
 using namespace std;
 
-// OD: Uses std::set to manage the frontier (sorted unique nodes)
-void bfs_set(int n, const vector<vector<int>>& adj, int start, vector<int>& dist) {
-    dist.assign(n, -1);
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
+
+// --- IMPLEMENTATION ---
+// OD: Preserves the use of std::set to manage the frontier and visited set.
+// Adapted to traverse a BST in level-order.
+void bfs_set(Node* root, vector<int>& result) {
+    if (!root) return;
+
+    // OD: Using std::set for both visited tracking and the current level frontier.
+    set<Node*> visited;
+    set<Node*> frontier;
     
-    set<int> visited;
-    set<int> frontier;
-    
-    frontier.insert(start);
-    visited.insert(start);
-    dist[start] = 0;
+    frontier.insert(root);
+    visited.insert(root);
 
     while (!frontier.empty()) {
-        set<int> next_frontier;
+        set<Node*> next_frontier;
         
-        for (int u : frontier) {
-            for (int v : adj[u]) {
-                if (visited.find(v) == visited.end()) {
+        for (Node* u : frontier) {
+            // Record the value for the Gold Standard output
+            result.push_back(u->val);
+
+            // Process tree "neighbors" (Left and Right children)
+            Node* neighbors[2] = {u->left, u->right};
+            for (int i = 0; i < 2; ++i) {
+                Node* v = neighbors[i];
+                if (v != nullptr && visited.find(v) == visited.end()) {
                     visited.insert(v);
-                    dist[v] = dist[u] + 1;
                     next_frontier.insert(v);
                 }
             }
         }
+        // Move to the next level
         frontier = next_frontier;
     }
 }
 
-// --- VERIFICATION HARNESS ---
-#include <queue>
-int main() {
-    int n = 100;
-    vector<vector<int>> adj(n);
-    ifstream file("graph.txt");
-    int u, v;
-    if (!file.is_open()) {
-        adj[0].push_back(1); adj[1].push_back(0);
+// --- TREE BUILDER ---
+Node* insert(Node* root, int val) {
+    if (!root) return new Node(val);
+    if (val < root->val) {
+        root->left = insert(root->left, val);
+        root->left->parent = root;
     } else {
-        while(file >> u >> v) { if(u<n && v<n) { adj[u].push_back(v); adj[v].push_back(u); }}
+        root->right = insert(root->right, val);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
     }
 
-    vector<int> dist_impl;
-    bfs_set(n, adj, 0, dist_impl);
-
-    // Reference
-    vector<int> dist_ref(n, -1);
-    queue<int> q; q.push(0); dist_ref[0]=0;
-    vector<bool> vis(n,false); vis[0]=true;
-    while(!q.empty()){
-        int curr = q.front(); q.pop();
-        for(int nb : adj[curr]){
-            if(!vis[nb]){ vis[nb]=true; dist_ref[nb]=dist_ref[curr]+1; q.push(nb); }
-        }
+    int num;
+    Node* root = nullptr;
+    // Build BST from the 10k numbers
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
-    if (dist_impl == dist_ref) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_set(root, result);
+
+    // 3. Print Actual Output (Gold Standard Format)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

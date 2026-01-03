@@ -1,48 +1,85 @@
 #include <iostream>
 #include <vector>
 #include <queue>
+#include <fstream>
+#include <string>
 
 using namespace std;
 
-struct Point { int x, y; };
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
 
 // --- IMPLEMENTATION ---
-int bfs_grid(int rows, int cols, Point start, Point end) {
-    int dx[] = {0, 0, 1, -1};
-    int dy[] = {1, -1, 0, 0};
-    
-    // OD: Using implicit neighbors (math) instead of adjacency list
-    vector<vector<int>> dist(rows, vector<int>(cols, -1));
-    queue<Point> q;
+// Adapted from the grid-based BFS to perform Level-Order Traversal on a BST
+void bfs_level_order(Node* root, vector<int>& result) {
+    if (!root) return;
 
-    q.push(start);
-    dist[start.x][start.y] = 0;
+    // OD: Using implicit neighbors (node->left, node->right) instead of an adjacency list
+    queue<Node*> q;
+
+    q.push(root);
 
     while(!q.empty()) {
-        Point u = q.front();
+        Node* u = q.front();
         q.pop();
 
-        if (u.x == end.x && u.y == end.y) return dist[u.x][u.y];
+        // Record value for Gold Standard output
+        result.push_back(u->val);
 
-        for(int i=0; i<4; i++) {
-            int nx = u.x + dx[i];
-            int ny = u.y + dy[i];
-
-            if(nx >= 0 && nx < rows && ny >= 0 && ny < cols && dist[nx][ny] == -1) {
-                dist[nx][ny] = dist[u.x][u.y] + 1;
-                q.push({nx, ny});
-            }
+        // Process children as "implicit neighbors"
+        if (u->left) {
+            q.push(u->left);
+        }
+        if (u->right) {
+            q.push(u->right);
         }
     }
-    return -1;
 }
 
-// --- VERIFICATION HARNESS ---
-int main() {
-    // 5x5 Grid. Start (0,0), End (4,4). Shortest path is 8 steps.
-    int d = bfs_grid(5, 5, {0,0}, {4,4});
-    
-    if (d == 8) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED: " << d << endl;
+// --- TREE BUILDER ---
+Node* insert(Node* root, int val) {
+    if (!root) return new Node(val);
+    if (val < root->val) {
+        root->left = insert(root->left, val);
+        root->left->parent = root;
+    } else {
+        root->right = insert(root->right, val);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
+    }
+
+    int num;
+    Node* root = nullptr;
+    while(file >> num) {
+        root = insert(root, num);
+    }
+    file.close();
+
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_level_order(root, result);
+
+    // 3. Print Actual Output (Matches Traversal style)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

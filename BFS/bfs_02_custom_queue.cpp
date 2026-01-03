@@ -1,120 +1,102 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <string>
 
 using namespace std;
 
-// --- IMPLEMENTATION ---
+// --- TREE STRUCTURE (Matches Traversal Format) ---
 struct Node {
     int val;
-    Node* next;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
 };
 
-struct GraphLL {
-    int V;
-    Node** head; // Array of pointers to linked lists
-    
-    GraphLL(int V) {
-        this->V = V;
-        head = new Node*[V];
-        for(int i=0; i<V; i++) head[i] = nullptr;
-    }
-    
-    void addEdge(int src, int dest) {
-        Node* newNode = new Node{dest, head[src]};
-        head[src] = newNode;
-        // Undirected
-        Node* newNode2 = new Node{src, head[dest]};
-        head[dest] = newNode2;
-    }
-};
-
-// OD: Fixed size circular queue
+// --- IMPLEMENTATION ---
+// OD: Fixed size circular queue preserved from original bfs_02
+// Adapted to store Node pointers instead of integers
 struct CustomQueue {
-    int* arr;
+    Node** arr;
     int front, rear, capacity;
     CustomQueue(int c) {
         capacity = c;
-        arr = new int[c];
+        arr = new Node*[c];
         front = 0; rear = 0;
     }
-    void push(int x) { arr[rear++] = x; } // Simplified for BFS (no wrap needed if capacity >= V)
+    ~CustomQueue() { delete[] arr; }
+    
+    void push(Node* x) { arr[rear++] = x; } 
     void pop() { front++; }
-    int top() { return arr[front]; }
+    Node* top() { return arr[front]; }
     bool empty() { return front == rear; }
 };
 
-void bfs_custom(GraphLL& g, int start, vector<int>& dist) {
-    dist.assign(g.V, -1);
-    
-    CustomQueue q(g.V + 1);
-    bool* visited = new bool[g.V];
-    for(int i=0; i<g.V; i++) visited[i] = false;
+void bfs_custom_queue(Node* root, vector<int>& result) {
+    if (!root) return;
 
-    visited[start] = true;
-    dist[start] = 0;
-    q.push(start);
+    // OD: Using the CustomQueue logic as per original bfs_02
+    // Capacity set to 10001 to handle the numbers.txt dataset safely
+    CustomQueue q(10001);
+    
+    q.push(root);
 
     while(!q.empty()) {
-        int u = q.top();
+        Node* u = q.top();
         q.pop();
 
-        // OD: Traversing manual linked list
-        Node* curr = g.head[u];
-        while(curr != nullptr) {
-            int v = curr->val;
-            if(!visited[v]) {
-                visited[v] = true;
-                dist[v] = dist[u] + 1;
-                q.push(v);
-            }
-            curr = curr->next;
+        result.push_back(u->val);
+
+        // OD: Level-order logic (Tree "neighbors")
+        if (u->left) {
+            q.push(u->left);
+        }
+        if (u->right) {
+            q.push(u->right);
         }
     }
-    delete[] visited;
 }
 
-// --- VERIFICATION HARNESS ---
-#include <queue>
-int main() {
-    int n = 100;
-    GraphLL g(n);
-    // Reference graph for checking
-    vector<vector<int>> adj_ref(n); 
-    
-    ifstream file("graph.txt");
-    int u, v;
-    if (!file.is_open()) {
-        g.addEdge(0, 1); adj_ref[0].push_back(1); adj_ref[1].push_back(0);
-        g.addEdge(1, 2); adj_ref[1].push_back(2); adj_ref[2].push_back(1);
+// --- TREE BUILDER ---
+Node* insert(Node* root, int val) {
+    if (!root) return new Node(val);
+    if (val < root->val) {
+        root->left = insert(root->left, val);
+        root->left->parent = root;
     } else {
-        while(file >> u >> v) {
-            if (u < n && v < n) {
-                g.addEdge(u, v);
-                adj_ref[u].push_back(v);
-                adj_ref[v].push_back(u);
-            }
-        }
+        root->right = insert(root->right, val);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt";
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
     }
 
-    vector<int> dist_impl;
-    bfs_custom(g, 0, dist_impl);
-
-    // Reference Check
-    vector<int> dist_ref(n, -1);
-    queue<int> q;
-    q.push(0); dist_ref[0] = 0;
-    while(!q.empty()){
-        int curr = q.front(); q.pop();
-        for(int neighbor : adj_ref[curr]){
-            if(dist_ref[neighbor] == -1){
-                dist_ref[neighbor] = dist_ref[curr] + 1;
-                q.push(neighbor);
-            }
-        }
+    int num;
+    Node* root = nullptr;
+    // Build BST from the 10k numbers
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
-    if (dist_impl == dist_ref) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_custom_queue(root, result);
+
+    // 3. Print Actual Output for Gold Standard Comparison
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

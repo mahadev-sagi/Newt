@@ -5,8 +5,8 @@ import subprocess
 import sys
 
 # Configuration
-SOURCE_DIR = "ll_files"
-LOGS_DIR = "raw_logs"
+SOURCE_DIR = "llb_files"
+LOGS_DIR = "raw_logs_bfs"
 INPUT_FILE = os.path.abspath("numbers.txt")
 
 def run_experiments():

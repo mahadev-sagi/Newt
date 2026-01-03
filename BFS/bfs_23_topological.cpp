@@ -1,71 +1,110 @@
 #include <iostream>
 #include <vector>
-#include <list>
 #include <queue>
+#include <map>
 #include <fstream>
+#include <string>
 
 using namespace std;
 
-// OD: Topological Sort BFS (Kahn's Algorithm)
-// Requires calculating and modifying In-Degrees
-bool bfs_kahn(int n, const vector<list<int>>& adj, vector<int>& result) {
-    vector<int> indegree(n, 0);
-    
-    // 1. Calculate In-Degrees
-    for (int u = 0; u < n; u++) {
-        for (int v : adj[u]) {
-            indegree[v]++;
-        }
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+// Structure from in_01_recursive.cpp
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
+
+// --- IMPLEMENTATION ---
+// OD: Topological Sort BFS (Kahn's Algorithm) preserved from original bfs_23.cpp.
+// This requires calculating and modifying in-degrees for the tree nodes.
+void bfs_kahn(Node* root, const vector<Node*>& all_nodes, vector<int>& result) {
+    if (!root) return;
+
+    // OD: 1. Calculate In-Degrees (Directed from parent to children)
+    map<Node*, int> indegree;
+    for (Node* n : all_nodes) indegree[n] = 0;
+
+    for (Node* u : all_nodes) {
+        if (u->left) indegree[u->left]++;
+        if (u->right) indegree[u->right]++;
     }
 
-    // 2. Initialize Queue with 0-indegree nodes
-    queue<int> q;
-    for (int i = 0; i < n; i++) {
-        if (indegree[i] == 0) q.push(i);
+    // OD: 2. Initialize Queue with 0-indegree nodes (in a tree, this is the root)
+    queue<Node*> q;
+    for (Node* n : all_nodes) {
+        if (indegree[n] == 0) q.push(n);
     }
 
     while (!q.empty()) {
-        int u = q.front();
+        Node* u = q.front();
         q.pop();
-        result.push_back(u);
+        
+        // Record the value for the Golden Standard output
+        result.push_back(u->val);
 
-        for (int v : adj[u]) {
-            // OD: Decrement and Check Logic
-            indegree[v]--;
-            if (indegree[v] == 0) {
-                q.push(v);
+        // Process "neighbors" (children)
+        Node* neighbors[2] = {u->left, u->right};
+        for (int i = 0; i < 2; i++) {
+            Node* v = neighbors[i];
+            if (v != nullptr) {
+                // OD: Decrement and Check Logic (Kahn's signature)
+                indegree[v]--;
+                if (indegree[v] == 0) {
+                    q.push(v);
+                }
             }
         }
     }
-
-    // If result size != n, the graph has a cycle (not a DAG)
-    return result.size() == n;
 }
 
-// --- VERIFICATION HARNESS ---
-int main() {
-    int n = 5;
-    vector<list<int>> adj(n);
-    
-    // Create a Directed Acyclic Graph (DAG) for verification
-    // 0->1, 0->2, 1->3, 2->3, 3->4
-    adj[0].push_back(1); 
-    adj[0].push_back(2);
-    adj[1].push_back(3); 
-    adj[2].push_back(3);
-    adj[3].push_back(4);
+// --- TREE BUILDER ---
+// Standard BST insertion logic from in_01_recursive.cpp
+Node* insert(Node* root, int val, vector<Node*>& all_nodes) {
+    if (!root) {
+        Node* newNode = new Node(val);
+        all_nodes.push_back(newNode);
+        return newNode;
+    }
+    if (val < root->val) {
+        root->left = insert(root->left, val, all_nodes);
+        root->left->parent = root;
+    } else {
+        root->right = insert(root->right, val, all_nodes);
+        root->right->parent = root;
+    }
+    return root;
+}
 
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
+    }
+
+    int num;
+    Node* root = nullptr;
+    vector<Node*> all_nodes; // Collection of all nodes for in-degree calculation
+    // Build BST from the 10k numbers dataset
+    while(file >> num) {
+        root = insert(root, num, all_nodes);
+    }
+    file.close();
+
+    // 2. Run Implementation
     vector<int> result;
-    bool isDAG = bfs_kahn(n, adj, result);
+    bfs_kahn(root, all_nodes, result);
 
-    // Verify ordering
-    // 0 must come before 1 and 2
-    // 4 must be last
-    bool passed = true;
-    if (result.empty() || result.front() != 0 || result.back() != 4) passed = false;
-    
-    if (passed) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
-    
+    // 3. Print Actual Output (Matches Inorder/Postorder style)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

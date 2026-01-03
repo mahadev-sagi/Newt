@@ -1,94 +1,90 @@
 #include <iostream>
 #include <vector>
-#include <list>
 #include <queue>
 #include <map>
 #include <fstream>
-#include <algorithm>
+#include <string>
 
 using namespace std;
 
+// --- TREE STRUCTURE (from Inorder Traversal) ---
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
+
 // --- IMPLEMENTATION ---
-void bfs_map_visited(int n, const vector<list<int>>& adj, int start, vector<int>& dist) {
-    dist.assign(n, -1);
+// This maintains the specific BFS structure: Using a Map for visited tracking
+void bfs_map_visited(Node* root, vector<int>& result) {
+    if (!root) return;
+
+    // OD: Using Map for visited tracking (as per original bfs_01)
+    map<Node*, bool> visited; 
     
-    // OD: Using Map for visited tracking
-    map<int, bool> visited; 
-    
-    queue<int> q;
-    q.push(start);
-    visited[start] = true;
-    dist[start] = 0;
+    queue<Node*> q;
+    q.push(root);
+    visited[root] = true;
 
     while(!q.empty()) {
-        int u = q.front();
+        Node* u = q.front();
         q.pop();
+        
+        // Record the value for output
+        result.push_back(u->val);
 
-        for(int v : adj[u]) {
-            // OD: Tree lookup for every neighbor check
-            if(visited.find(v) == visited.end()) {
-                visited[v] = true;
-                dist[v] = dist[u] + 1;
-                q.push(v);
-            }
+        // OD: Tree lookup for every neighbor check
+        if (u->left && visited.find(u->left) == visited.end()) {
+            visited[u->left] = true;
+            q.push(u->left);
+        }
+        if (u->right && visited.find(u->right) == visited.end()) {
+            visited[u->right] = true;
+            q.push(u->right);
         }
     }
 }
 
-// --- VERIFICATION HARNESS ---
-void bfs_reference(int n, const vector<list<int>>& adj, int start, vector<int>& dist) {
-    dist.assign(n, -1);
-    vector<bool> visited(n, false);
-    queue<int> q;
-    
-    visited[start] = true;
-    dist[start] = 0;
-    q.push(start);
-    while(!q.empty()){
-        int u = q.front(); q.pop();
-        for(int v : adj[u]){
-            if(!visited[v]){
-                visited[v] = true;
-                dist[v] = dist[u] + 1;
-                q.push(v);
-            }
-        }
+// --- TREE BUILDER ---
+Node* insert(Node* root, int val) {
+    if (!root) return new Node(val);
+    if (val < root->val) {
+        root->left = insert(root->left, val);
+        root->left->parent = root;
+    } else {
+        root->right = insert(root->right, val);
+        root->right->parent = root;
     }
+    return root;
 }
 
-int main() {
-    // 1. Setup Graph
-    int n = 100; // Small test graph
-    vector<list<int>> adj(n);
-    ifstream file("graph.txt");
-    int u, v;
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
     if (!file.is_open()) {
-        // Fallback graph if file missing
-        adj[0].push_back(1); adj[1].push_back(2); adj[2].push_back(3);
-        adj[0].push_back(4); adj[4].push_back(5);
-    } else {
-        while(file >> u >> v) {
-            if (u < n && v < n) {
-                adj[u].push_back(v);
-                adj[v].push_back(u);
-            }
-        }
-    }
-
-    // 2. Run Implementation
-    vector<int> dist_impl;
-    bfs_map_visited(n, adj, 0, dist_impl);
-
-    // 3. Run Reference
-    vector<int> dist_ref;
-    bfs_reference(n, adj, 0, dist_ref);
-
-    // 4. Compare
-    if (dist_impl == dist_ref) {
-        cout << "VERIFICATION PASSED" << endl;
-        return 0;
-    } else {
-        cout << "FAILED" << endl;
+        cerr << "Error: Could not open " << filename << endl;
         return 1;
     }
+
+    int num;
+    Node* root = nullptr;
+    while(file >> num) {
+        root = insert(root, num);
+    }
+    file.close();
+
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_map_visited(root, result);
+
+    // 3. Print Actual Output (Matches Traversal Format)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
+    return 0;
 }

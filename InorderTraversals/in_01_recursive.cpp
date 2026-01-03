@@ -3,6 +3,8 @@
 #include <stack>
 #include <fstream>
 #include <string>
+#include <cstdlib> 
+
 
 using namespace std;
 
@@ -68,5 +70,6 @@ int main(int argc, char** argv) {
     }
     cout << endl;
 
-    return 0;
+    exit(0); 
 }
+

@@ -1,53 +1,82 @@
 #include <iostream>
 #include <vector>
-#include <queue>
 #include <fstream>
+#include <string>
+#include <map>
 
 using namespace std;
 
-// OD: Direction Optimizing Logic
-// Switches between "Push" (Queue) and "Pull" (Scan)
-void bfs_direction_opt(int n, const vector<vector<int>>& adj, int start, vector<int>& dist) {
-    dist.assign(n, -1);
-    dist[start] = 0;
-    
-    vector<int> frontier;
-    frontier.push_back(start);
-    int level = 0;
-    int edges_to_check = 0; // Simulated edge count for heuristic
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+// Structure from in_01_recursive.cpp
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
 
-    // Simple heuristic threshold
+// --- IMPLEMENTATION ---
+// OD: Direction Optimizing Logic preserved from bfs_25_direction_opt.cpp.
+// Switches between "Push" (Top-Down) and "Pull" (Bottom-Up) based on frontier size.
+void bfs_direction_opt(Node* root, const vector<Node*>& all_nodes, vector<int>& result) {
+    if (!root) return;
+
+    int n = all_nodes.size();
+    map<Node*, int> dist;
+    for (Node* node : all_nodes) dist[node] = -1;
+
+    dist[root] = 0;
+    vector<Node*> frontier;
+    frontier.push_back(root);
+    
+    int level = 0;
+    // Simple heuristic threshold as per original implementation
     int threshold = n / 10; 
 
     while (!frontier.empty()) {
         level++;
-        vector<int> next_frontier;
+        vector<Node*> next_frontier;
 
-        // HEURISTIC CHECK: If frontier is huge, switch to Bottom-Up
-        if (frontier.size() > threshold) {
+        // OD: HEURISTIC CHECK - If frontier is huge, switch to Bottom-Up (Pull)
+        if (frontier.size() > (size_t)threshold) {
             // --- BOTTOM-UP STEP (Pull) ---
-            for (int v = 0; v < n; ++v) {
+            for (Node* v : all_nodes) {
                 if (dist[v] == -1) { // If unvisited
-                    for (int u : adj[v]) { // Check neighbors
-                        // Is neighbor in current frontier? (Simulated check)
-                        bool parent_in_frontier = false;
-                        for(int f : frontier) if(f==u) parent_in_frontier=true;
-                        
-                        if (parent_in_frontier) {
-                            dist[v] = level;
-                            next_frontier.push_back(v);
-                            break; 
+                    // In a tree, check neighbors: parent and children
+                    Node* neighbors[] = {v->parent, v->left, v->right};
+                    bool parent_in_frontier = false;
+                    
+                    for (Node* u : neighbors) {
+                        if (!u) continue;
+                        // OD: Check if neighbor 'u' is in the current frontier
+                        for (Node* f : frontier) {
+                            if (f == u) {
+                                parent_in_frontier = true;
+                                break;
+                            }
                         }
+                        if (parent_in_frontier) break;
+                    }
+                    
+                    if (parent_in_frontier) {
+                        dist[v] = level;
+                        next_frontier.push_back(v);
+                        result.push_back(v->val);
                     }
                 }
             }
         } else {
             // --- TOP-DOWN STEP (Push / Standard) ---
-            for (int u : frontier) {
-                for (int v : adj[u]) {
-                    if (dist[v] == -1) {
+            for (Node* u : frontier) {
+                // Record processed nodes for output in the order discovered
+                // (Root is already in result or handled at level 0)
+                if (level == 1 && u == root) result.push_back(u->val);
+
+                Node* children[] = {u->left, u->right};
+                for (Node* v : children) {
+                    if (v && dist[v] == -1) {
                         dist[v] = level;
                         next_frontier.push_back(v);
+                        result.push_back(v->val);
                     }
                 }
             }
@@ -56,33 +85,52 @@ void bfs_direction_opt(int n, const vector<vector<int>>& adj, int start, vector<
     }
 }
 
-// --- VERIFICATION HARNESS ---
-int main() {
-    int n = 100;
-    vector<vector<int>> adj(n);
-    ifstream file("graph.txt");
-    int u, v;
-    if (!file.is_open()) {
-        adj[0].push_back(1); adj[1].push_back(0);
+// --- TREE BUILDER ---
+// Standard BST insertion logic from in_01_recursive.cpp
+Node* insert(Node* root, int val, vector<Node*>& all_nodes) {
+    if (!root) {
+        Node* newNode = new Node(val);
+        all_nodes.push_back(newNode);
+        return newNode;
+    }
+    if (val < root->val) {
+        root->left = insert(root->left, val, all_nodes);
+        root->left->parent = root;
     } else {
-        while(file >> u >> v) { if(u<n && v<n) { adj[u].push_back(v); adj[v].push_back(u); }}
+        root->right = insert(root->right, val, all_nodes);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
     }
 
-    vector<int> dist_impl;
-    bfs_direction_opt(n, adj, 0, dist_impl);
-
-    // Reference
-    vector<int> dist_ref(n, -1);
-    queue<int> q; q.push(0); dist_ref[0]=0;
-    vector<bool> vis(n,false); vis[0]=true;
-    while(!q.empty()){
-        int curr = q.front(); q.pop();
-        for(int nb : adj[curr]){
-            if(!vis[nb]){ vis[nb]=true; dist_ref[nb]=dist_ref[curr]+1; q.push(nb); }
-        }
+    int num;
+    Node* root = nullptr;
+    vector<Node*> all_nodes; // Collection of nodes for the Pull/Bottom-Up scans
+    while (file >> num) {
+        root = insert(root, num, all_nodes);
     }
+    file.close();
 
-    if (dist_impl == dist_ref) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_direction_opt(root, all_nodes, result);
+
+    // 3. Print Actual Output (Matches Inorder/Postorder style)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

@@ -2,58 +2,86 @@
 #include <vector>
 #include <deque>
 #include <fstream>
+#include <string>
 
 using namespace std;
 
-// OD: Uses std::deque (Double Ended Queue).
-void bfs_deque(int n, const vector<vector<int>>& adj, int start, vector<int>& dist) {
-    dist.assign(n, -1);
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
+
+// --- IMPLEMENTATION ---
+// OD: Preserves the use of std::deque (Double Ended Queue) from the original bfs_09.
+// Adapted to traverse a BST in level-order.
+void bfs_deque(Node* root, vector<int>& result) {
+    if (!root) return;
     
-    deque<int> dq;
-    dq.push_front(start); 
-    dist[start] = 0;
+    // OD: Using deque<Node*> as per the original implementation's tool choice
+    deque<Node*> dq;
+    dq.push_front(root); 
 
     while (!dq.empty()) {
-        int u = dq.front();
+        Node* u = dq.front();
         dq.pop_front();
 
-        for (int v : adj[u]) {
-            if (dist[v] == -1) {
-                dist[v] = dist[u] + 1;
-                dq.push_back(v); // Weight 1 -> Back
-            }
+        // Record the value for the Gold Standard output
+        result.push_back(u->val);
+
+        // Process tree "neighbors" (Left and Right children)
+        // Weight is implicitly 1, so we push to the back to maintain level order
+        if (u->left) {
+            dq.push_back(u->left);
+        }
+        if (u->right) {
+            dq.push_back(u->right);
         }
     }
 }
 
-// --- VERIFICATION HARNESS ---
-#include <queue>
-int main() {
-    int n = 100;
-    vector<vector<int>> adj(n);
-    ifstream file("graph.txt");
-    int u, v;
-    if (!file.is_open()) {
-        adj[0].push_back(1); adj[1].push_back(0);
+// --- TREE BUILDER ---
+Node* insert(Node* root, int val) {
+    if (!root) return new Node(val);
+    if (val < root->val) {
+        root->left = insert(root->left, val);
+        root->left->parent = root;
     } else {
-        while(file >> u >> v) { if(u<n && v<n) { adj[u].push_back(v); adj[v].push_back(u); }}
+        root->right = insert(root->right, val);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
     }
 
-    vector<int> dist_impl;
-    bfs_deque(n, adj, 0, dist_impl);
-
-    // Reference
-    vector<int> dist_ref(n, -1);
-    queue<int> q; q.push(0); dist_ref[0]=0;
-    vector<bool> vis(n,false); vis[0]=true;
-    while(!q.empty()){
-        int curr = q.front(); q.pop();
-        for(int nb : adj[curr]){
-            if(!vis[nb]){ vis[nb]=true; dist_ref[nb]=dist_ref[curr]+1; q.push(nb); }
-        }
+    int num;
+    Node* root = nullptr;
+    // Build BST from the 10k numbers
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
-    if (dist_impl == dist_ref) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_deque(root, result);
+
+    // 3. Print Actual Output (Matches Gold Standard Traversal style)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

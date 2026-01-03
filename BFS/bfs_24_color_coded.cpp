@@ -2,67 +2,103 @@
 #include <vector>
 #include <queue>
 #include <fstream>
+#include <string>
+#include <map>
 
 using namespace std;
 
+// OD: Enum state tracking preserved from original bfs_24.cpp
 enum Color { WHITE, GRAY, BLACK };
 
-// OD: Uses Enum state tracking
-void bfs_color(int n, const vector<vector<int>>& adj, int start, vector<int>& dist) {
-    dist.assign(n, -1);
-    vector<Color> color(n, WHITE);
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+// Structure from in_01_recursive.cpp
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
+
+// --- IMPLEMENTATION ---
+// OD: Uses Enum state tracking (WHITE=unvisited, GRAY=discovered, BLACK=finished)
+void bfs_color(Node* root, vector<int>& result) {
+    if (!root) return;
+
+    // Use a map to track the color state of each pointer
+    map<Node*, Color> color;
     
-    queue<int> q;
+    queue<Node*> q;
     
     // Start discovery
-    color[start] = GRAY; // Discovered but not finished
-    dist[start] = 0;
-    q.push(start);
+    color[root] = GRAY; // Discovered but not finished
+    q.push(root);
 
     while(!q.empty()) {
-        int u = q.front();
+        Node* u = q.front();
         q.pop();
 
-        for(int v : adj[u]) {
-            if(color[v] == WHITE) { // Unvisited
-                color[v] = GRAY;
-                dist[v] = dist[u] + 1;
-                q.push(v);
+        // Record value for Gold Standard output
+        result.push_back(u->val);
+
+        // Process tree "neighbors" (Left and Right children)
+        Node* neighbors[2] = {u->left, u->right};
+        for (int i = 0; i < 2; i++) {
+            Node* v = neighbors[i];
+            if (v != nullptr) {
+                // Check if unvisited using the Enum state
+                if (color.find(v) == color.end() || color[v] == WHITE) {
+                    color[v] = GRAY;
+                    q.push(v);
+                }
             }
         }
         
-        // OD: Explicit "Finished" state
+        // OD: Explicitly mark as "Finished" as per original implementation logic
         color[u] = BLACK; 
     }
 }
 
-// --- VERIFICATION HARNESS ---
-int main() {
-    int n = 100;
-    vector<vector<int>> adj(n);
-    ifstream file("graph.txt");
-    int u, v;
-    if (!file.is_open()) {
-        adj[0].push_back(1); adj[1].push_back(0);
+// --- TREE BUILDER ---
+// Standard BST insertion logic from in_01_recursive.cpp
+Node* insert(Node* root, int val) {
+    if (!root) return new Node(val);
+    if (val < root->val) {
+        root->left = insert(root->left, val);
+        root->left->parent = root;
     } else {
-        while(file >> u >> v) { if(u<n && v<n) { adj[u].push_back(v); adj[v].push_back(u); }}
+        root->right = insert(root->right, val);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt
+    string filename = "numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
     }
 
-    vector<int> dist_impl;
-    bfs_color(n, adj, 0, dist_impl);
-
-    // Reference
-    vector<int> dist_ref(n, -1);
-    queue<int> q; q.push(0); dist_ref[0]=0;
-    vector<bool> vis(n,false); vis[0]=true;
-    while(!q.empty()){
-        int curr = q.front(); q.pop();
-        for(int nb : adj[curr]){
-            if(!vis[nb]){ vis[nb]=true; dist_ref[nb]=dist_ref[curr]+1; q.push(nb); }
-        }
+    int num;
+    Node* root = nullptr;
+    // Build BST from the 10k numbers dataset
+    while(file >> num) {
+        root = insert(root, num);
     }
+    file.close();
 
-    if (dist_impl == dist_ref) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_color(root, result);
+
+    // 3. Print Actual Output (Matches Inorder/Postorder style)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << (i == result.size() - 1 ? "" : " ");
+    }
+    cout << endl;
+
     return 0;
 }

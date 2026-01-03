@@ -1,79 +1,121 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <string>
+#include <map>
 
 using namespace std;
 
-// OD: Bottom-Up Approach. 
-// Iterates unvisited nodes to find parents instead of using a Queue.
-void bfs_bottom_up(int n, const vector<vector<int>>& adj, int start, vector<int>& dist) {
-    dist.assign(n, -1);
-    
-    vector<int> frontier;
-    vector<int> next_frontier;
-    
-    dist[start] = 0;
-    frontier.push_back(start);
-    int level = 0;
+// --- TREE STRUCTURE (Matches Traversal Format) ---
+// Structure from in_01_recursive.cpp
+struct Node {
+    int val;
+    Node *left, *right, *parent;
+    Node(int v) : val(v), left(nullptr), right(nullptr), parent(nullptr) {}
+};
 
+// --- IMPLEMENTATION ---
+// OD: Bottom-Up Approach preserved from original bfs_21.cpp. 
+// Iterates through all unvisited nodes to find parents instead of using a Queue.
+void bfs_bottom_up(Node* root, const vector<Node*>& all_nodes, vector<int>& result) {
+    if (!root) return;
+
+    // Use a map to track distance/visited state, preserving the dist[v] == -1 logic
+    map<Node*, int> dist;
+    for (Node* n : all_nodes) dist[n] = -1;
+    
+    vector<Node*> frontier;
+    vector<Node*> next_frontier;
+    
+    // Initialize starting level
+    dist[root] = 0;
+    frontier.push_back(root);
+    result.push_back(root->val);
+
+    int level = 0;
     while (!frontier.empty()) {
         level++;
         next_frontier.clear();
 
         // OD: Iterate through ALL nodes to check if they are unvisited
-        for (int v = 0; v < n; ++v) {
+        // This is the core "Bottom-Up" characteristic preserved from original bfs_21.cpp.
+        for (Node* v : all_nodes) {
             if (dist[v] == -1) {
-                // Check if any neighbor 'u' is in the current frontier
-                for (int u : adj[v]) {
-                    // Optimized check: is 'u' in frontier?
-                    // In a real optimized bottom-up, we use a bitmap for the frontier.
-                    // Here we scan for simplicity of demonstration.
-                    bool parent_found = false;
-                    for(int f : frontier) {
-                        if(f == u) { parent_found = true; break; }
-                    }
+                // Check if any neighbor (parent or children in a tree) is in the current frontier
+                Node* neighbors[] = {v->parent, v->left, v->right};
+                bool parent_found = false;
+                
+                for (Node* u : neighbors) {
+                    if (!u) continue;
                     
-                    if (parent_found) {
-                        dist[v] = level;
-                        next_frontier.push_back(v);
-                        break; // Found a parent, stop checking neighbors
+                    // Optimized check: is neighbor 'u' in the current frontier?
+                    for (Node* f : frontier) {
+                        if (f == u) {
+                            parent_found = true;
+                            break;
+                        }
                     }
+                    if (parent_found) break;
+                }
+
+                if (parent_found) {
+                    dist[v] = level;
+                    next_frontier.push_back(v);
+                    result.push_back(v->val);
                 }
             }
         }
+        // OD: Swap buffers (frontier update)
         frontier = next_frontier;
     }
 }
 
-// --- VERIFICATION HARNESS ---
-#include <queue>
-int main() {
-    int n = 100;
-    vector<vector<int>> adj(n);
-    ifstream file("graph.txt");
-    int u, v;
-    if (!file.is_open()) {
-        adj[0].push_back(1); adj[1].push_back(0);
-        adj[1].push_back(2); adj[2].push_back(1);
+// --- TREE BUILDER ---
+// Standard BST insertion logic as seen in in_01_recursive.cpp
+Node* insert(Node* root, int val, vector<Node*>& all_nodes) {
+    if (!root) {
+        Node* newNode = new Node(val);
+        all_nodes.push_back(newNode);
+        return newNode;
+    }
+    if (val < root->val) {
+        root->left = insert(root->left, val, all_nodes);
+        root->left->parent = root;
     } else {
-        while(file >> u >> v) { if(u<n && v<n) { adj[u].push_back(v); adj[v].push_back(u); }}
+        root->right = insert(root->right, val, all_nodes);
+        root->right->parent = root;
+    }
+    return root;
+}
+
+int main(int argc, char** argv) {
+    // 1. Setup Tree from numbers.txt (using same path as in_01_recursive.cpp)
+    string filename = "../../numbers.txt"; 
+    if (argc > 1) filename = argv[1];
+
+    ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        cerr << "Error: Could not open " << filename << endl;
+        return 1;
     }
 
-    vector<int> dist_impl;
-    bfs_bottom_up(n, adj, 0, dist_impl);
-
-    // Reference
-    vector<int> dist_ref(n, -1);
-    queue<int> q; q.push(0); dist_ref[0]=0;
-    vector<bool> vis(n,false); vis[0]=true;
-    while(!q.empty()){
-        int curr = q.front(); q.pop();
-        for(int nb : adj[curr]){
-            if(!vis[nb]){ vis[nb]=true; dist_ref[nb]=dist_ref[curr]+1; q.push(nb); }
-        }
+    int num;
+    Node* root = nullptr;
+    vector<Node*> all_nodes; // Collection of all nodes for the bottom-up iteration
+    while (file >> num) {
+        root = insert(root, num, all_nodes);
     }
+    file.close();
 
-    if (dist_impl == dist_ref) cout << "VERIFICATION PASSED" << endl;
-    else cout << "FAILED" << endl;
+    // 2. Run Implementation
+    vector<int> result;
+    bfs_bottom_up(root, all_nodes, result);
+
+    // 3. Print Actual Output (Matches Inorder/Postorder style)
+    for (size_t i = 0; i < result.size(); ++i) {
+        cout << result[i] << " ";
+    }
+    cout << endl;
+
     return 0;
 }
